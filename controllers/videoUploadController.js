@@ -22,18 +22,16 @@ const upload = multer({ storage });
  * @access  Private
  */
 const videoUpload = (req, res) => {
-  console.log('Server-side code executing');
+  upload.single('video')(req, res, (err) => {
+    if (err) {
+      // Handle any error that occurs during the upload
+      console.error('Error uploading file:', err);
+      return res.status(500).json({ error: 'Error uploading file' });
+    }
 
-  // upload.single('video')(req, res, (err) => {
-  //   if (err) {
-  //     // Handle any error that occurs during the upload
-  //     console.error('Error uploading file:', err);
-  //     return res.status(500).json({ error: 'Error uploading file' });
-  //   }
-
-  //   // File upload is successful
-  //   res.status(200).json({ message: 'Video uploaded successfully' });
-  // });
+    // File upload is successful
+    res.status(200).json({ message: 'Video uploaded successfully' });
+  });
 };
 
 module.exports = {
