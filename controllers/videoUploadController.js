@@ -3,6 +3,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const Face = require('../models/faceModel');
 const fs = require('fs');
+const asyncHandler = require('express-async-handler');
 
 // Create a storage engine for multer
 const storage = multer.diskStorage({
@@ -24,7 +25,7 @@ const upload = multer({ storage });
  * @route   POST /api/videoUpload
  * @access  Private
  */
-const videoUpload = (req, res) => {
+const videoUpload = asyncHandler(async (req, res) => {
   upload.single('video')(req, res, async (err) => {
     if (err) {
       // Handle any error that occurs during the upload
@@ -33,7 +34,7 @@ const videoUpload = (req, res) => {
     }
 
     // File upload is successful
-    const videoPath = `C:/Users/haseeb/Desktop/Forbmax Applications/face-fixer-app/face-fixer-server/${req.file.path}`;
+    const videoPath = `${req.file.path}`;
 
     // Delete all data from Face schema after video upload
     await Face.deleteMany({});
@@ -43,7 +44,7 @@ const videoUpload = (req, res) => {
     console.log('Script execution completed successfully');
 
     // wait for the faces to be written in the folder and then upload to the database
-    await postImagesToDatabase('C:/Users/haseeb/Desktop/Forbmax Applications/face-fixer-app/face-fixer/public/faces');
+    await postImagesToDatabase('scripts/faces');
 
     setTimeout(async () => {
       // Fetch faces from the database
@@ -52,39 +53,19 @@ const videoUpload = (req, res) => {
       res.status(200).json({ message: 'Video uploaded and script executed successfully', faces });
     }, 3000);
   });
-};
-
-/**
- * @desc    request for next frame faces
- * @route   POST /api/processFrame
- * @access  Private
- */
-const processFrame = async (req, res) => {
-  const { frameNumber } = req.body;
-
-  await executePythonScript(videoPath, frameNumber);
-  console.log('Script execution completed successfully');
-
-  // wait for the faces to be written in the folder and then upload to the database
-  await postImagesToDatabase('C:/Users/haseeb/Desktop/Forbmax Applications/face-fixer-app/face-fixer/public/faces');
-
-  // Fetch images from the database
-  const images = await Face.find();
-
-  res.status(200).json({ message: 'Video uploaded and script executed successfully', images });
-};
+});
 
 /**
  * @desc    get faces data
  * @route   GET /api/faces
  * @access  Private
  */
-const getFaces = async (req, res) => {
-  // Fetch faces from the database
-  const images = await Face.find();
+// const getFaces = async (req, res) => {
+//   // Fetch faces from the database
+//   const images = await Face.find();
 
-  res.status(200).json({ message: 'Faces retrieved', images });
-};
+//   res.status(200).json({ message: 'Faces retrieved', images });
+// };
 
 const postImagesToDatabase = (folderPath) => {
   fs.readdir(folderPath, (err, files) => {
@@ -119,7 +100,7 @@ const executePythonScript = (videoPath, frameNumber = 0) => {
   console.log('Script start Running');
 
   const pythonExecutablePath = 'D:/ProgramData/anaconda3/envs/tf/python.exe';
-  const pythonScriptPath = 'C:/Users/haseeb/Desktop/dataset generation/test.py';
+  const pythonScriptPath = '../scripts/test.py';
 
   return new Promise((resolve, reject) => {
     const process = spawn(pythonExecutablePath, [pythonScriptPath, videoPath, frameNumber], {
@@ -143,6 +124,4 @@ const executePythonScript = (videoPath, frameNumber = 0) => {
 
 module.exports = {
   videoUpload,
-  processFrame,
-  getFaces,
 };

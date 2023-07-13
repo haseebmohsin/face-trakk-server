@@ -1,0 +1,6 @@
+#conda install -c conda-forge dlib
+django
+numpy
+face-recognition
+imutils
+opencv-python
