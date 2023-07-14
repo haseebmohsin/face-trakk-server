@@ -25,35 +25,60 @@ const upload = multer({ storage });
  * @route   POST /api/videoUpload
  * @access  Private
  */
-const videoUpload = asyncHandler(async (req, res) => {
-  upload.single('video')(req, res, async (err) => {
-    if (err) {
-      // Handle any error that occurs during the upload
-      console.error('Error uploading file:', err);
-      return res.status(500).json({ error: 'Error uploading file' });
-    }
+const videoUpload = async (req, res) => {
+  try {
+    upload.single('video')(req, res, async (err) => {
+      if (err) {
+        console.error('Error uploading file:', err);
+        return res.status(500).json({ error: 'Error uploading file' });
+      }
 
-    // File upload is successful
-    const videoPath = `${req.file.path}`;
+      const videoPath = `${req.file.path}`;
 
-    // Delete all data from Face schema after video upload
-    await Face.deleteMany({});
+      await Face.deleteMany();
 
-    await executePythonScript(videoPath);
+      await executePythonScript(videoPath);
 
-    console.log('Script execution completed successfully');
+      console.log('Script execution completed successfully');
 
-    // wait for the faces to be written in the folder and then upload to the database
-    await postImagesToDatabase('scripts/faces');
+      await postImagesToDatabase('scripts/faces');
 
-    setTimeout(async () => {
-      // Fetch faces from the database
-      const faces = await Face.find();
+      setTimeout(async () => {
+        const faces = await Face.find();
 
-      res.status(200).json({ message: 'Video uploaded and script executed successfully', faces });
-    }, 3000);
-  });
-});
+        // Convert the image data to base64 before sending it to the frontend
+        const formattedFaces = faces.map((face) => ({
+          _id: face._id,
+          name: face.name,
+          image: face.image.toString('base64'),
+        }));
+
+        res.status(200).json({ message: 'Video uploaded and script executed successfully', faces: formattedFaces });
+      }, 3000);
+    });
+  } catch (error) {
+    console.error('Error uploading and processing video:', error);
+    res.status(500).json({ error: 'Error uploading and processing video' });
+  }
+};
+
+const getData = async (req, res) => {
+  try {
+    const faces = await Face.find();
+
+    // Convert the image data to base64 before sending it to the frontend
+    const formattedFaces = faces.map((face) => ({
+      _id: face._id,
+      name: face.name,
+      image: face.image.toString('base64'),
+    }));
+
+    res.status(200).json({ message: 'faces Fetched', faces: formattedFaces });
+  } catch (error) {
+    console.error('Error retrieving data:', error);
+    res.status(500).json({ error: 'Error retrieving data' });
+  }
+};
 
 /**
  * @desc    get faces data
@@ -78,33 +103,46 @@ const postImagesToDatabase = (folderPath) => {
       const imagePath = `${folderPath}/${file}`;
       const path = require('path');
 
-      // Create a new image document
-      const image = new Face({
-        name: path.parse(file).name,
-        path: file,
-      });
+      // Read the image file
+      fs.readFile(imagePath, async (err, data) => {
+        if (err) {
+          console.error(`Error reading image ${file}:`, err);
+          return;
+        }
 
-      // Save the image document to the database
-      image.save((error) => {
-        if (error) {
-          console.error(`Error saving image ${file} to database:`, error);
-        } else {
+        // Create a new image document with the image data
+        const image = new Face({
+          name: path.parse(file).name,
+          image: data,
+        });
+
+        try {
+          // Save the image document to the database
+          await image.save();
           console.log(`Image ${file} uploaded and saved to the database`);
+        } catch (error) {
+          console.error(`Error saving image ${file} to the database:`, error);
         }
       });
     });
   });
 };
 
-const executePythonScript = (videoPath, frameNumber = 0) => {
+const executePythonScript = (videoPath) => {
   console.log('Script start Running');
 
   const pythonExecutablePath = 'D:/ProgramData/anaconda3/envs/tf/python.exe';
-  const pythonScriptPath = '../scripts/test.py';
+  const pythonScriptPath = 'scripts/test.py';
 
   return new Promise((resolve, reject) => {
-    const process = spawn(pythonExecutablePath, [pythonScriptPath, videoPath, frameNumber], {
-      cwd: path.dirname(pythonScriptPath),
+    const process = spawn(pythonExecutablePath, [pythonScriptPath, videoPath]);
+
+    process.stdout.on('data', (data) => {
+      console.log(`Python script output: ${data}`);
+    });
+
+    process.stderr.on('data', (data) => {
+      console.error(`Python script error: ${data}`);
     });
 
     process.on('close', (code) => {
@@ -124,4 +162,5 @@ const executePythonScript = (videoPath, frameNumber = 0) => {
 
 module.exports = {
   videoUpload,
+  getData,
 };

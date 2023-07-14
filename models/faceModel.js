@@ -1,10 +1,9 @@
-// models/faceModel.js
 const mongoose = require('mongoose');
 
 const faceSchema = new mongoose.Schema(
   {
     name: String,
-    path: String,
+    image: { type: Buffer },
   },
   { timestamps: true }
 );
