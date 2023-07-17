@@ -1,10 +1,13 @@
+const asyncHandler = require('express-async-handler');
 const multer = require('multer');
-const path = require('path');
 const { spawn } = require('child_process');
 const Face = require('../models/clusterModel');
-const fs = require('fs');
 const Cluster = require('../models/clusterModel');
-const asyncHandler = require('express-async-handler');
+
+const fs = require('fs');
+const util = require('util');
+const path = require('path');
+const readdir = util.promisify(fs.readdir);
 
 // Create a storage engine for multer
 const storage = multer.diskStorage({
@@ -93,19 +96,16 @@ const getData = async (req, res) => {
 //   res.status(200).json({ message: 'Faces retrieved', images });
 // };
 
-const storeClustersDataInDatabase = (folderPath) => {
-  fs.readdir(folderPath, async (err, clusterDirs) => {
-    if (err) {
-      console.error('Error reading directory:', err);
-      return;
-    }
+const storeClustersDataInDatabase = async (folderPath) => {
+  try {
+    const clusterDirs = await readdir(folderPath);
 
     for (const clusterDir of clusterDirs) {
       const clusterPath = path.join(folderPath, clusterDir);
 
       try {
         // Read the image files in the cluster directory
-        const files = await fs.readdir(clusterPath);
+        const files = await readdir(clusterPath);
 
         // Store the face images and their data in an array
         const faceImagesData = [];
@@ -113,7 +113,7 @@ const storeClustersDataInDatabase = (folderPath) => {
           const imagePath = path.join(clusterPath, file);
 
           // Read the image file as a Buffer
-          const imageData = await fs.readFile(imagePath);
+          const imageData = await fs.promises.readFile(imagePath);
 
           // Add the face image data to the array
           faceImagesData.push({
@@ -135,7 +135,9 @@ const storeClustersDataInDatabase = (folderPath) => {
         console.error(`Error storing ${clusterDir} and face images:`, error);
       }
     }
-  });
+  } catch (err) {
+    console.error('Error reading directory:', err);
+  }
 };
 
 const executePythonScript = (videoPath) => {
