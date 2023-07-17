@@ -13,6 +13,7 @@ from datetime import datetime
 import shutil
 import re
 import argparse
+from clustering import clustering_design
 def generate_pascal_xml(image_path, faces,label):
     image_dir = os.path.dirname(image_path)
     image_name = os.path.basename(image_path)
@@ -52,12 +53,14 @@ def generate_pascal_xml(image_path, faces,label):
     xml_tree.write(xml_path)
 if os.path.exists("scripts//faces"):
 	shutil.rmtree("scripts//faces")
+	shutil.rmtree("scripts//Clusters")
 Path("scripts//faces").mkdir(parents=True, exist_ok=True)
+Path("scripts//dataset_generate").mkdir(parents=True, exist_ok=True)
 # ti = time.time()
 # print('[INFO] creating facial embeddings...')
 
 data = pickle.loads(
-    open(r"C:\Users\haseeb\Desktop\Forbmax Applications\face-fixer-app\facefixer-server\scripts\models\model.pickle", 'rb').read())  # encodings here
+    open(r"C:\Users\Haseeb Khan\Desktop\Forbmax\facefixer\face-fixer-server\scripts\models\model.pickle", 'rb').read())  # encodings here
 # print(data)
 
 # print('Done! \n[INFO] recognising faces in webcam...')
@@ -114,6 +117,11 @@ def data_generation_with_xml(video_path):
 		for ((top, right, bottom, left), name) in zip(boxes, names):
 			top, right, bottom, left = int(
 				top * r), int(right * r), int(bottom * r), int(left * r)
+			padding = 20
+			top = max(0, top - padding)
+			right = min(frame.shape[1], right + padding)
+			bottom = min(frame.shape[0], bottom + padding)
+			left = max(0, left - padding)
 			cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
 			y = top - 15 if top - 15 > 15 else top + 15
 			cv2.putText(frame, name, (left, y),
@@ -146,7 +154,7 @@ def data_generation_with_xml(video_path):
 		# for i in removing_files:
 		#     os.remove(i)
 	cv2.destroyAllWindows()
-	
+	clustering_design()
 	# print('Done! \nTime taken: {:.1f} minutes'.format((time.time() - ti)/60))
 
 if __name__ == '__main__':
@@ -165,3 +173,4 @@ if __name__ == '__main__':
     
     # Call the data_generation_with_xml function with the provided video path
     data_generation_with_xml(args.video_path)
+	

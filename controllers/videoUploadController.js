@@ -131,7 +131,7 @@ const postImagesToDatabase = (folderPath) => {
 const executePythonScript = (videoPath) => {
   console.log('Script start Running');
 
-  const pythonExecutablePath = 'D:/ProgramData/anaconda3/envs/tf/python.exe';
+  const pythonExecutablePath = `${process.env.PYTHON_EXE_PATH}`;
   const pythonScriptPath = 'scripts/test.py';
 
   return new Promise((resolve, reject) => {
