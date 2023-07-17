@@ -1,8 +1,9 @@
 const multer = require('multer');
 const path = require('path');
 const { spawn } = require('child_process');
-const Face = require('../models/faceModel');
+const Face = require('../models/clusterModel');
 const fs = require('fs');
+const Cluster = require('../models/clusterModel');
 const asyncHandler = require('express-async-handler');
 
 // Create a storage engine for multer
@@ -41,7 +42,7 @@ const videoUpload = async (req, res) => {
 
       console.log('Script execution completed successfully');
 
-      await postImagesToDatabase('scripts/faces');
+      await storeClustersDataInDatabase('scripts/clusters');
 
       setTimeout(async () => {
         const faces = await Face.find();
@@ -92,39 +93,48 @@ const getData = async (req, res) => {
 //   res.status(200).json({ message: 'Faces retrieved', images });
 // };
 
-const postImagesToDatabase = (folderPath) => {
-  fs.readdir(folderPath, (err, files) => {
+const storeClustersDataInDatabase = (folderPath) => {
+  fs.readdir(folderPath, async (err, clusterDirs) => {
     if (err) {
       console.error('Error reading directory:', err);
       return;
     }
 
-    files.forEach((file) => {
-      const imagePath = `${folderPath}/${file}`;
-      const path = require('path');
+    for (const clusterDir of clusterDirs) {
+      const clusterPath = path.join(folderPath, clusterDir);
 
-      // Read the image file
-      fs.readFile(imagePath, async (err, data) => {
-        if (err) {
-          console.error(`Error reading image ${file}:`, err);
-          return;
+      try {
+        // Read the image files in the cluster directory
+        const files = await fs.readdir(clusterPath);
+
+        // Store the face images and their data in an array
+        const faceImagesData = [];
+        for (const file of files) {
+          const imagePath = path.join(clusterPath, file);
+
+          // Read the image file as a Buffer
+          const imageData = await fs.readFile(imagePath);
+
+          // Add the face image data to the array
+          faceImagesData.push({
+            imageName: file,
+            faceImage: imageData,
+          });
         }
 
-        // Create a new image document with the image data
-        const image = new Face({
-          name: path.parse(file).name,
-          image: data,
+        // Create a new cluster document with the face images data
+        const cluster = new Cluster({
+          clusterName: clusterDir,
+          faceImages: faceImagesData,
         });
 
-        try {
-          // Save the image document to the database
-          await image.save();
-          console.log(`Image ${file} uploaded and saved to the database`);
-        } catch (error) {
-          console.error(`Error saving image ${file} to the database:`, error);
-        }
-      });
-    });
+        // Save the cluster document to the database
+        await cluster.save();
+        console.log(`${clusterDir} uploaded and saved to the database`);
+      } catch (error) {
+        console.error(`Error storing ${clusterDir} and face images:`, error);
+      }
+    }
   });
 };
 
