@@ -60,7 +60,7 @@ Path("scripts//dataset_generate").mkdir(parents=True, exist_ok=True)
 # print('[INFO] creating facial embeddings...')
 
 data = pickle.loads(
-    open(r"C:\Users\Haseeb Khan\Desktop\Forbmax\facefixer\face-fixer-server\scripts\models\model.pickle", 'rb').read())  # encodings here
+    open(r"C:/Users/haseeb/Desktop/Forbmax Applications/face-fixer-app/facefixer-server/scripts/models/model.pickle", 'rb').read())  # encodings here
 # print(data)
 
 # print('Done! \n[INFO] recognising faces in webcam...')

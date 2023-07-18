@@ -5,9 +5,9 @@ const clusterSchema = new mongoose.Schema(
   {
     clusterName: { type: String, required: true },
 
-    faceImages: [
+    faceImagesArray: [
       {
-        imageName: { type: String, required: true },
+        faceName: { type: String, required: true },
         faceImage: { type: Buffer, required: true },
       },
     ],

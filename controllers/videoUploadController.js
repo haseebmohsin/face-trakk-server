@@ -1,7 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const multer = require('multer');
 const { spawn } = require('child_process');
-const Face = require('../models/clusterModel');
 const Cluster = require('../models/clusterModel');
 
 const fs = require('fs');
@@ -25,121 +24,144 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /**
- * @desc    Upload Video for face recognition
+ * @desc    Upload Video for cluster recognition
  * @route   POST /api/videoUpload
  * @access  Private
  */
-const videoUpload = async (req, res) => {
-  try {
-    upload.single('video')(req, res, async (err) => {
-      if (err) {
-        console.error('Error uploading file:', err);
-        return res.status(500).json({ error: 'Error uploading file' });
-      }
+const videoUpload = asyncHandler(async (req, res) => {
+  upload.single('video')(req, res, async (err) => {
+    if (err) {
+      console.error('Error uploading file:', err);
+      res.status(500);
+      throw new Error('Error uploading file');
+    }
 
-      const videoPath = `${req.file.path}`;
+    const videoPath = `${req.file.path}`;
 
-      await Face.deleteMany();
+    await Cluster.deleteMany();
 
-      await executePythonScript(videoPath);
+    await executePythonScript(videoPath);
 
-      console.log('Script execution completed successfully');
+    console.log('Script execution completed successfully');
 
-      await storeClustersDataInDatabase('scripts/clusters');
+    await storeClustersDataInDatabase('scripts/clusters');
 
-      setTimeout(async () => {
-        const faces = await Face.find();
+    setTimeout(async () => {
+      const clustersData = await getClustersDataFromDatabase();
 
-        // Convert the image data to base64 before sending it to the frontend
-        const formattedFaces = faces.map((face) => ({
-          _id: face._id,
-          name: face.name,
-          image: face.image.toString('base64'),
-        }));
+      res.status(200).json({ message: 'Script executed successfully', clusters: clustersData });
+    }, 3000);
+  });
+});
 
-        res.status(200).json({ message: 'Video uploaded and script executed successfully', faces: formattedFaces });
-      }, 3000);
-    });
-  } catch (error) {
-    console.error('Error uploading and processing video:', error);
-    res.status(500).json({ error: 'Error uploading and processing video' });
+/**
+ * @desc    Get clusters data
+ * @route   GET /api/clusters
+ * @access  Private
+ */
+const getClustersData = asyncHandler(async (req, res) => {
+  const clustersData = await getClustersDataFromDatabase();
+
+  res.status(200).json({ message: 'clusters Fetched', clusters: clustersData });
+});
+
+/**
+ * @desc    Get cluster data by ID
+ * @route   GET /api/clusters/:id
+ * @access  Private
+ */
+const getClusterDataById = asyncHandler(async (req, res) => {
+  const clusterId = req.params.id;
+  const cluster = await Cluster.findById(clusterId);
+
+  if (!cluster) {
+    res.status(404);
+    throw new Error('Cluster not found');
   }
+
+  // Convert the image data to base64 before sending it to the frontend
+  const clusterData = {
+    _id: cluster._id,
+    clusterName: cluster.clusterName,
+    faceImagesArray: cluster.faceImagesArray.map((item) => ({
+      faceName: item.faceName,
+      faceImage: item.faceImage.toString('base64'),
+    })),
+  };
+
+  res.status(200).json({ cluster: clusterData });
+});
+
+/**
+ * @desc    Get clusters data from the database
+ * @returns {Promise<Array>} Array of cluster data
+ */
+const getClustersDataFromDatabase = async () => {
+  const clusters = await Cluster.find();
+
+  // Convert the image data to base64 before sending it to the frontend
+  const clustersData = clusters.map((cluster) => ({
+    _id: cluster._id,
+    clusterName: cluster.clusterName,
+    faceImagesArray: cluster.faceImagesArray.map((item) => ({
+      faceName: item.faceName,
+      faceImage: item.faceImage.toString('base64'),
+    })),
+  }));
+
+  return clustersData;
 };
 
-const getData = async (req, res) => {
-  try {
-    const faces = await Face.find();
+/**
+ * @desc    Store clusters data in the database
+ * @param   {string} folderPath - Path of the folder containing cluster data
+ * @returns {Promise<void>}
+ */
+const storeClustersDataInDatabase = async (folderPath) => {
+  const clusterDirs = await readdir(folderPath);
 
-    // Convert the image data to base64 before sending it to the frontend
-    const formattedFaces = faces.map((face) => ({
-      _id: face._id,
-      name: face.name,
-      image: face.image.toString('base64'),
-    }));
+  for (const clusterDir of clusterDirs) {
+    const clusterPath = path.join(folderPath, clusterDir);
 
-    res.status(200).json({ message: 'faces Fetched', faces: formattedFaces });
-  } catch (error) {
-    console.error('Error retrieving data:', error);
-    res.status(500).json({ error: 'Error retrieving data' });
+    try {
+      // Read the image files in the cluster directory
+      const files = await readdir(clusterPath);
+
+      // Store the cluster images and their data in an array
+      const faceImagesData = [];
+      for (const file of files) {
+        const imagePath = path.join(clusterPath, file);
+
+        // Read the image file as a Buffer
+        const imageData = await fs.promises.readFile(imagePath);
+
+        // Add the cluster image data to the array
+        faceImagesData.push({
+          faceName: path.parse(file).name,
+          faceImage: imageData,
+        });
+      }
+
+      // Create a new cluster document with the cluster images data
+      const cluster = new Cluster({
+        clusterName: clusterDir,
+        faceImagesArray: faceImagesData,
+      });
+
+      // Save the cluster document to the database
+      await cluster.save();
+      console.log(`${clusterDir} uploaded and saved to the database`);
+    } catch (error) {
+      console.error(`Error storing ${clusterDir} and cluster images:`, error);
+    }
   }
 };
 
 /**
- * @desc    get faces data
- * @route   GET /api/faces
- * @access  Private
+ * @desc    Execute Python script
+ * @param   {string} videoPath - Path of the uploaded video file
+ * @returns {Promise<void>}
  */
-// const getFaces = async (req, res) => {
-//   // Fetch faces from the database
-//   const images = await Face.find();
-
-//   res.status(200).json({ message: 'Faces retrieved', images });
-// };
-
-const storeClustersDataInDatabase = async (folderPath) => {
-  try {
-    const clusterDirs = await readdir(folderPath);
-
-    for (const clusterDir of clusterDirs) {
-      const clusterPath = path.join(folderPath, clusterDir);
-
-      try {
-        // Read the image files in the cluster directory
-        const files = await readdir(clusterPath);
-
-        // Store the face images and their data in an array
-        const faceImagesData = [];
-        for (const file of files) {
-          const imagePath = path.join(clusterPath, file);
-
-          // Read the image file as a Buffer
-          const imageData = await fs.promises.readFile(imagePath);
-
-          // Add the face image data to the array
-          faceImagesData.push({
-            imageName: file,
-            faceImage: imageData,
-          });
-        }
-
-        // Create a new cluster document with the face images data
-        const cluster = new Cluster({
-          clusterName: clusterDir,
-          faceImages: faceImagesData,
-        });
-
-        // Save the cluster document to the database
-        await cluster.save();
-        console.log(`${clusterDir} uploaded and saved to the database`);
-      } catch (error) {
-        console.error(`Error storing ${clusterDir} and face images:`, error);
-      }
-    }
-  } catch (err) {
-    console.error('Error reading directory:', err);
-  }
-};
-
 const executePythonScript = (videoPath) => {
   console.log('Script start Running');
 
@@ -163,7 +185,6 @@ const executePythonScript = (videoPath) => {
         resolve();
       } else {
         // Script execution failed
-        console.log('Script stop Running');
         console.log('Script execution failed for some reason');
 
         reject(new Error('Script execution failed'));
@@ -174,5 +195,6 @@ const executePythonScript = (videoPath) => {
 
 module.exports = {
   videoUpload,
-  getData,
+  getClustersData,
+  getClusterDataById,
 };

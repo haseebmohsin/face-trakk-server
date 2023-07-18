@@ -1,5 +1,5 @@
 const express = require('express');
-const { videoUpload, getData } = require('../controllers/videoUploadController');
+const { videoUpload, getClustersData, getClusterDataById } = require('../controllers/videoUploadController');
 
 const router = express.Router();
 
@@ -7,6 +7,9 @@ const router = express.Router();
 router.post('/upload', videoUpload);
 
 // GET /api/getFaces
-router.get('/getData', getData);
+router.get('/getClustersData', getClustersData);
+
+// GET /api/getClusterData/:id
+router.get('/getClusterData/:id', getClusterDataById);
 
 module.exports = router;
