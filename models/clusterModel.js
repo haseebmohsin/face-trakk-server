@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const clusterSchema = new mongoose.Schema(
   {
     clusterName: { type: String, required: true },
-
+    isActive: { type: Boolean, default: true },
     faceImagesArray: [
       {
         faceName: { type: String, required: true },

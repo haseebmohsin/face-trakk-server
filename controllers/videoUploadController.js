@@ -40,8 +40,8 @@ const videoUpload = asyncHandler(async (req, res) => {
 
     await Cluster.deleteMany();
 
-    await executePythonScript(videoPath);
-
+    const pythonScriptPath = 'scripts/test.py';
+    await executePythonScript(pythonScriptPath, [videoPath]);
     console.log('Script execution completed successfully');
 
     await storeClustersDataInDatabase('scripts/clusters');
@@ -52,6 +52,25 @@ const videoUpload = asyncHandler(async (req, res) => {
       res.status(200).json({ message: 'Script executed successfully', clusters: clustersData });
     }, 3000);
   });
+});
+
+/**
+ * @desc    Update the XMLs
+ * @route   POST /api/xmlUpdate
+ * @access  Private
+ */
+const xmlUpdate = asyncHandler(async (req, res) => {
+  const { cluster_id, ...data } = req.body;
+  const { xml_path, old_names_array, new_label } = data;
+
+  const pythonScriptPath = 'scripts/xml_update.py';
+  await executePythonScript(pythonScriptPath, [xml_path, old_names_array, new_label]);
+  console.log('Script execution completed successfully');
+
+  // Update the Cluster to set isActive to false for the specified cluster_id
+  await Cluster.findOneAndUpdate({ _id: cluster_id }, { isActive: false });
+
+  res.status(200).json({ message: 'XMLs Updated Successfully!' });
 });
 
 /**
@@ -97,7 +116,7 @@ const getClusterDataById = asyncHandler(async (req, res) => {
  * @returns {Promise<Array>} Array of cluster data
  */
 const getClustersDataFromDatabase = async () => {
-  const clusters = await Cluster.find();
+  const clusters = await Cluster.find({ isActive: true });
 
   // Convert the image data to base64 before sending it to the frontend
   const clustersData = clusters.map((cluster) => ({
@@ -159,17 +178,17 @@ const storeClustersDataInDatabase = async (folderPath) => {
 
 /**
  * @desc    Execute Python script
- * @param   {string} videoPath - Path of the uploaded video file
+ * @param   {string} pythonScriptPath - Path of the Python script file
+ * @param   {Object} args - Arguments to be passed to the `spawn` function
  * @returns {Promise<void>}
  */
-const executePythonScript = (videoPath) => {
+const executePythonScript = (pythonScriptPath, args) => {
   console.log('Script start Running');
 
   const pythonExecutablePath = `${process.env.PYTHON_EXE_PATH}`;
-  const pythonScriptPath = 'scripts/test.py';
 
   return new Promise((resolve, reject) => {
-    const process = spawn(pythonExecutablePath, [pythonScriptPath, videoPath]);
+    const process = spawn(pythonExecutablePath, [pythonScriptPath, ...args]);
 
     process.stdout.on('data', (data) => {
       console.log(`Python script output: ${data}`);
@@ -197,4 +216,5 @@ module.exports = {
   videoUpload,
   getClustersData,
   getClusterDataById,
+  xmlUpdate,
 };

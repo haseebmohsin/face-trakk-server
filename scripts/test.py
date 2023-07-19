@@ -29,7 +29,16 @@ def generate_pascal_xml(image_path, faces,label):
     ET.SubElement(size, 'height').text = str(height)
     i=0
     for face in faces:
-        xmin, ymin, xmax, ymax = face  # Extract bounding box coordinates
+	    # top, right, bottom, left = face_box
+
+	    # # Print or use the coordinates as needed
+	    # print("xmin:", left)
+	    # print("xmax:", right)
+	    # print("ymin:", top)
+	    # print("ymax:", bottom)
+
+
+        ymin, xmax, ymax, xmin = face  # Extract bounding box coordinates
 
         # Create object annotation
 
@@ -53,14 +62,16 @@ def generate_pascal_xml(image_path, faces,label):
     xml_tree.write(xml_path)
 if os.path.exists("scripts//faces"):
 	shutil.rmtree("scripts//faces")
-	shutil.rmtree("scripts//Clusters")
+	shutil.rmtree("scripts//clusters")
+	shutil.rmtree("scripts//dataset_generate")
 Path("scripts//faces").mkdir(parents=True, exist_ok=True)
 Path("scripts//dataset_generate").mkdir(parents=True, exist_ok=True)
+Path("scripts//clusters").mkdir(parents=True, exist_ok=True)
 # ti = time.time()
 # print('[INFO] creating facial embeddings...')
 
 data = pickle.loads(
-    open(r"C:/Users/haseeb/Desktop/Forbmax Applications/face-fixer-app/facefixer-server/scripts/models/model.pickle", 'rb').read())  # encodings here
+    open(r"C:\Users\haseeb\Desktop\Forbmax Applications\face-fixer-app\facefixer-server\scripts\models\model.pickle", 'rb').read())  # encodings here
 # print(data)
 
 # print('Done! \n[INFO] recognising faces in webcam...')
@@ -104,6 +115,7 @@ def data_generation_with_xml(video_path):
 		# print(boxes)
 		encodings = face_recognition.face_encodings(rgb, boxes, model='large')
 		names = []
+		bounding_box_xml=[]
 		for encoding in encodings:
 			votes = face_recognition.compare_faces(
 				data['encodings'], encoding, tolerance=0.5)
@@ -114,6 +126,7 @@ def data_generation_with_xml(video_path):
 			else:
 				names.append('Unknown'+str(Unknown_person))
 				Unknown_person=Unknown_person+1
+		# counter_temp=0
 		for ((top, right, bottom, left), name) in zip(boxes, names):
 			top, right, bottom, left = int(
 				top * r), int(right * r), int(bottom * r), int(left * r)
@@ -122,13 +135,16 @@ def data_generation_with_xml(video_path):
 			right = min(frame.shape[1], right + padding)
 			bottom = min(frame.shape[0], bottom + padding)
 			left = max(0, left - padding)
-			cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-			y = top - 15 if top - 15 > 15 else top + 15
-			cv2.putText(frame, name, (left, y),
-						cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
+			# cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+			# y = top - 15 if top - 15 > 15 else top + 15
+			# cv2.putText(frame, name, (left, y),
+			# 			cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
 
 			# cropped_image = frame[Y:Y+H, X:X+W]
 			# # # print(top, right, bottom, left)
+			bounding_box_xml.append([top, right, bottom, left])
+			# print(boxes[counter_temp],'-->',top, right, bottom, left)
+			# counter_temp=counter_temp+1
 			cropped_image=frame[top:bottom, left:right]
 			cv2.imwrite("scripts//faces//"+name+'.jpg',cropped_image)
 	        # break
@@ -140,7 +156,7 @@ def data_generation_with_xml(video_path):
 			# file_name_save="Waqar.jpg"
 			file_name_save="scripts//dataset_generate//"+str(dt.year)+"_"+str(dt.month)+"_"+str(dt.day)+"_"+str(dt.hour)+"_"+str(dt.minute)+"_"+str(dt.second)+"_"+str(dt.microsecond)+".jpg"
 			cv2.imwrite(file_name_save,frame)
-			generate_pascal_xml(image_path=file_name_save, faces=boxes,label=names)
+			generate_pascal_xml(image_path=file_name_save, faces=bounding_box_xml,label=names)
 			
 
 		    # counter=counter+1
