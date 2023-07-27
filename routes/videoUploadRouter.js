@@ -1,7 +1,19 @@
 const express = require('express');
-const { videoUpload, getClustersData, getClusterDataById, xmlUpdate } = require('../controllers/videoUploadController');
-
 const router = express.Router();
+const {
+  videoUpload,
+  getClustersData,
+  getClusterDataById,
+  xmlUpdate,
+  startTraining,
+  moveToCluster,
+} = require('../controllers/videoUploadController');
+
+// GET /api/getFaces
+router.get('/getClustersData', getClustersData);
+
+// GET /api/getClusterData/:id
+router.get('/getClusterData/:id', getClusterDataById);
 
 // POST /api/videoUpload
 router.post('/upload', videoUpload);
@@ -9,10 +21,10 @@ router.post('/upload', videoUpload);
 // POST /api/xmlUpdate
 router.post('/xmlUpdate', xmlUpdate);
 
-// GET /api/getFaces
-router.get('/getClustersData', getClustersData);
+// POST /api/startTraining
+router.post('/startTraining', startTraining);
 
-// GET /api/getClusterData/:id
-router.get('/getClusterData/:id', getClusterDataById);
+// POST /api/moveToCluster
+router.post('/moveToCluster', moveToCluster);
 
 module.exports = router;

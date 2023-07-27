@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 // Define the Cluster schema
 const clusterSchema = new mongoose.Schema(
   {
-    clusterName: { type: String, required: true },
     isActive: { type: Boolean, default: true },
+
     faceImagesArray: [
       {
         faceName: { type: String, required: true },

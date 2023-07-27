@@ -74,6 +74,59 @@ const xmlUpdate = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Move to faces to another cluster
+ * @route   POST /api/moveToCluster
+ * @access  Private
+ */
+const moveToCluster = asyncHandler(async (req, res) => {
+  const { selectedItemIds, clusterId } = req.body;
+
+  try {
+    // Find the source cluster based on the provided face image _ids
+    const sourceCluster = await Cluster.findOne({ 'faceImagesArray._id': { $in: selectedItemIds } });
+
+    if (!sourceCluster) {
+      return res.status(404).json({ message: 'Source cluster not found.' });
+    }
+
+    // Create a new cluster and add the selected face images to it
+    const newCluster = new Cluster({
+      isActive: true,
+      faceImagesArray: sourceCluster.faceImagesArray.filter((item) => selectedItemIds.includes(item._id.toString())),
+    });
+
+    // Save the new cluster
+    await newCluster.save();
+
+    // Remove the selected face images from the source cluster
+    sourceCluster.faceImagesArray = sourceCluster.faceImagesArray.filter(
+      (item) => !selectedItemIds.includes(item._id.toString())
+    );
+
+    // Save the changes to the source cluster
+    await sourceCluster.save();
+
+    res.status(200).json({ message: 'Moved success' });
+  } catch (error) {
+    res.status(500).json({ message: 'Something went wrong', error: error.message });
+  }
+});
+
+/**
+ * @desc    execute the training script
+ * @route   POST /api/startTraining
+ * @access  Private
+ */
+const startTraining = asyncHandler(async (req, res) => {
+  const pythonScriptPath = 'scripts/fr_model/face_training.py';
+
+  await executePythonScript(pythonScriptPath);
+  console.log('Script execution completed successfully');
+
+  res.status(200).json({ message: 'Training Completed!' });
+});
+
+/**
  * @desc    Get clusters data
  * @route   GET /api/clusters
  * @access  Private
@@ -103,6 +156,7 @@ const getClusterDataById = asyncHandler(async (req, res) => {
     _id: cluster._id,
     clusterName: cluster.clusterName,
     faceImagesArray: cluster.faceImagesArray.map((item) => ({
+      _id: item._id,
       faceName: item.faceName,
       faceImage: item.faceImage.toString('base64'),
     })),
@@ -123,6 +177,7 @@ const getClustersDataFromDatabase = async () => {
     _id: cluster._id,
     clusterName: cluster.clusterName,
     faceImagesArray: cluster.faceImagesArray.map((item) => ({
+      _id: item._id,
       faceName: item.faceName,
       faceImage: item.faceImage.toString('base64'),
     })),
@@ -182,10 +237,10 @@ const storeClustersDataInDatabase = async (folderPath) => {
  * @param   {Object} args - Arguments to be passed to the `spawn` function
  * @returns {Promise<void>}
  */
-const executePythonScript = (pythonScriptPath, args) => {
+const executePythonScript = (pythonScriptPath, args = []) => {
   console.log('Script start Running');
 
-  const pythonExecutablePath = `${process.env.PYTHON_EXE_PATH}`;
+  const pythonExecutablePath = `${process.env.PYTHON_EXE_PATH_TF_TORCH}`;
 
   return new Promise((resolve, reject) => {
     const process = spawn(pythonExecutablePath, [pythonScriptPath, ...args]);
@@ -217,4 +272,8 @@ module.exports = {
   getClustersData,
   getClusterDataById,
   xmlUpdate,
+
+  startTraining,
+
+  moveToCluster,
 };

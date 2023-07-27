@@ -42,14 +42,14 @@ def generate_pascal_xml(image_path, faces,label):
 
         # Create object annotation
 
-        if "Unknown" in label[i]:
-            result=label[i]
-            # print(result)
-        else:
-            result = re.sub(r'\d+$', '', label[i])
+        # if "Unknown" in label[i]:
+        #     result=label[i]
+        #     # print(result)
+        # else:
+        #     result = re.sub(r'\d+$', '', label[i])
         	# print(result)
         obj = ET.SubElement(annotation, 'object')
-        ET.SubElement(obj, 'name').text = result
+        ET.SubElement(obj, 'name').text = label[i]
         bndbox = ET.SubElement(obj, 'bndbox')
         ET.SubElement(bndbox, 'xmin').text = str(xmin)
         ET.SubElement(bndbox, 'ymin').text = str(ymin)
@@ -71,7 +71,7 @@ Path("scripts//clusters").mkdir(parents=True, exist_ok=True)
 # print('[INFO] creating facial embeddings...')
 
 data = pickle.loads(
-    open(r"C:\Users\haseeb\Desktop\Forbmax Applications\face-fixer-app\facefixer-server\scripts\models\model.pickle", 'rb').read())  # encodings here
+    open(r"C:\Users\haseeb\Desktop\Forbmax Applications\facetrakk-app\facetrakk-server\scripts\models\model.pickle", 'rb').read())  # encodings here
 # print(data)
 
 # print('Done! \n[INFO] recognising faces in webcam...')
@@ -118,7 +118,7 @@ def data_generation_with_xml(video_path):
 		bounding_box_xml=[]
 		for encoding in encodings:
 			votes = face_recognition.compare_faces(
-				data['encodings'], encoding, tolerance=0.5)
+				data['encodings'], encoding, tolerance=0.1)
 			if True in votes:
 				names.append(Counter([name for name, vote in list(
 					zip(data['names'], votes)) if vote == True]).most_common()[0][0]+str(known_person))
