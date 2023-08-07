@@ -1,4 +1,4 @@
 train: C://Users//haseeb//Desktop//Forbmax Applications//facetrakk-app//facetrakk-server\scripts//fr_model//Dataset//train.txt/
 val: C://Users//haseeb//Desktop//Forbmax Applications//facetrakk-app//facetrakk-server\scripts//fr_model//Dataset//validate.txt/
-nc: 4
-names: ['Attaullah Tarar', 'Azhar Sadeeq', 'Hamid Mir', '']
+nc: 3
+names: ['Arif Alvi', 'undefined', '']
