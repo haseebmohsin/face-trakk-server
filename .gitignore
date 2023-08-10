@@ -1,3 +1,9 @@
 /node_modules
 
+/scripts/database
+/scripts/yolov5_face/*.pt
+/scripts/insightface/*.pth
+/scripts/insightface/__pycache__
+/scripts/static/results/*.mp4
+
 .env

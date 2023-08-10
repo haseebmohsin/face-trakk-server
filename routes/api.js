@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const videoUploadRouter = require('./videoUploadRouter');
+const trainingRouter = require('./trainingRouter');
 const personRouter = require('./personRouter');
 const facedashRouter = require('./facedashRouter');
 
 // Mount routes for video upload
-router.use('/video', videoUploadRouter);
+router.use('/training', trainingRouter);
 
 // Mount routes for person
 router.use('/person', personRouter);

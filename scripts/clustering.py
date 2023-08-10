@@ -6,18 +6,28 @@ from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 from facenet_pytorch import InceptionResnetV1
 import torch
+import shutil
 from sklearn.cluster import KMeans
 import warnings
-def clustering_design(folder_path = r"scripts\faces"):
+from pathlib import Path
+
+
+
+def clustering_design(folder_path = r"scripts/detected_faces"):
     warnings.filterwarnings("ignore", category=FutureWarning)
 
 
     os.environ["LOKY_MAX_CPU_COUNT"] = "4" 
 
     # Step 1: Data Preparation
-
-    # Set the path to the folder containing face images
     
+    # Create a directory to save face images if it doesn't exist
+
+    if os.path.exists("scripts/clusters"):
+	    shutil.rmtree("scripts/clusters")
+
+    Path("scripts/clusters").mkdir(parents=True, exist_ok=True)
+
 
     # Step 2: Feature Extraction
 
